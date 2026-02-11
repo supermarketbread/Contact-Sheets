@@ -25,9 +25,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
-
 from PIL import Image, ImageFile
 
 Image.MAX_IMAGE_PIXELS = None
@@ -375,264 +372,271 @@ def run_cli(args):
     )
 
 
-class ContactSheetsApp(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("Contact Sheets Builder")
-        self.geometry("1100x760")
-        self.minsize(1000, 700)
+def launch_gui():
+    import tkinter as tk
+    from tkinter import filedialog, messagebox, ttk
 
-        self.task_queue: queue.Queue = queue.Queue()
-        self.worker_thread: threading.Thread | None = None
+    class ContactSheetsApp(tk.Tk):
+        def __init__(self):
+            super().__init__()
+            self.title("Contact Sheets Builder")
+            self.geometry("1100x760")
+            self.minsize(1000, 700)
 
-        self.sources: list[Path] = []
+            self.task_queue: queue.Queue = queue.Queue()
+            self.worker_thread: threading.Thread | None = None
 
-        self._build_styles()
-        self._build_ui()
-        self.after(120, self._poll_queue)
+            self.sources: list[Path] = []
 
-    def _build_styles(self):
-        style = ttk.Style(self)
-        style.theme_use("clam")
-        style.configure("Root.TFrame", background="#111827")
-        style.configure("Card.TFrame", background="#1F2937", relief="flat")
-        style.configure("TLabel", background="#1F2937", foreground="#E5E7EB")
-        style.configure("Title.TLabel", font=("Segoe UI", 22, "bold"))
-        style.configure("Sub.TLabel", font=("Segoe UI", 10), foreground="#9CA3AF")
-        style.configure("Accent.TButton", font=("Segoe UI", 10, "bold"))
-        style.configure("TCheckbutton", background="#1F2937", foreground="#E5E7EB")
-        style.configure("TRadiobutton", background="#1F2937", foreground="#E5E7EB")
-        style.configure("TEntry", fieldbackground="#111827", foreground="#E5E7EB")
+            self._build_styles()
+            self._build_ui()
+            self.after(120, self._poll_queue)
 
-    def _build_ui(self):
-        root = ttk.Frame(self, padding=16, style="Root.TFrame")
-        root.pack(fill="both", expand=True)
+        def _build_styles(self):
+            style = ttk.Style(self)
+            style.theme_use("clam")
+            style.configure("Root.TFrame", background="#111827")
+            style.configure("Card.TFrame", background="#1F2937", relief="flat")
+            style.configure("TLabel", background="#1F2937", foreground="#E5E7EB")
+            style.configure("Title.TLabel", font=("Segoe UI", 22, "bold"))
+            style.configure("Sub.TLabel", font=("Segoe UI", 10), foreground="#9CA3AF")
+            style.configure("Accent.TButton", font=("Segoe UI", 10, "bold"))
+            style.configure("TCheckbutton", background="#1F2937", foreground="#E5E7EB")
+            style.configure("TRadiobutton", background="#1F2937", foreground="#E5E7EB")
+            style.configure("TEntry", fieldbackground="#111827", foreground="#E5E7EB")
 
-        card = ttk.Frame(root, padding=16, style="Card.TFrame")
-        card.pack(fill="both", expand=True)
+        def _build_ui(self):
+            root = ttk.Frame(self, padding=16, style="Root.TFrame")
+            root.pack(fill="both", expand=True)
 
-        ttk.Label(card, text="Contact Sheets Builder", style="Title.TLabel").pack(anchor="w")
-        ttk.Label(
-            card,
-            text="Create video and photo contact sheets with date filtering.",
-            style="Sub.TLabel",
-        ).pack(anchor="w", pady=(2, 14))
+            card = ttk.Frame(root, padding=16, style="Card.TFrame")
+            card.pack(fill="both", expand=True)
 
-        src_row = ttk.Frame(card, style="Card.TFrame")
-        src_row.pack(fill="x", pady=4)
-        ttk.Label(src_row, text="Source folders:").pack(side="left")
-        ttk.Button(src_row, text="Add Folder", command=self._add_source).pack(side="left", padx=8)
-        ttk.Button(src_row, text="Remove Selected", command=self._remove_source).pack(side="left")
-        ttk.Button(src_row, text="Clear", command=self._clear_sources).pack(side="left", padx=8)
+            ttk.Label(card, text="Contact Sheets Builder", style="Title.TLabel").pack(anchor="w")
+            ttk.Label(
+                card,
+                text="Create video and photo contact sheets with date filtering.",
+                style="Sub.TLabel",
+            ).pack(anchor="w", pady=(2, 14))
 
-        self.src_list = tk.Listbox(
-            card,
-            height=8,
-            bg="#111827",
-            fg="#E5E7EB",
-            selectbackground="#2563EB",
-            relief="flat",
-            highlightthickness=0,
-        )
-        self.src_list.pack(fill="x", pady=(4, 10))
+            src_row = ttk.Frame(card, style="Card.TFrame")
+            src_row.pack(fill="x", pady=4)
+            ttk.Label(src_row, text="Source folders:").pack(side="left")
+            ttk.Button(src_row, text="Add Folder", command=self._add_source).pack(side="left", padx=8)
+            ttk.Button(src_row, text="Remove Selected", command=self._remove_source).pack(side="left")
+            ttk.Button(src_row, text="Clear", command=self._clear_sources).pack(side="left", padx=8)
 
-        opts = ttk.Frame(card, style="Card.TFrame")
-        opts.pack(fill="x", pady=4)
+            self.src_list = tk.Listbox(
+                card,
+                height=8,
+                bg="#111827",
+                fg="#E5E7EB",
+                selectbackground="#2563EB",
+                relief="flat",
+                highlightthickness=0,
+            )
+            self.src_list.pack(fill="x", pady=(4, 10))
 
-        self.shallow_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            opts,
-            text="Shallow scan (top-level files only)",
-            variable=self.shallow_var,
-        ).grid(row=0, column=0, sticky="w", padx=(0, 18), pady=3)
+            opts = ttk.Frame(card, style="Card.TFrame")
+            opts.pack(fill="x", pady=4)
 
-        ttk.Label(opts, text="Workers:").grid(row=0, column=1, sticky="e")
-        self.workers_var = tk.StringVar(value=str(MAX_WORKERS))
-        ttk.Entry(opts, width=6, textvariable=self.workers_var).grid(
-            row=0, column=2, sticky="w", padx=6
-        )
+            self.shallow_var = tk.BooleanVar(value=False)
+            ttk.Checkbutton(
+                opts,
+                text="Shallow scan (top-level files only)",
+                variable=self.shallow_var,
+            ).grid(row=0, column=0, sticky="w", padx=(0, 18), pady=3)
 
-        ttk.Label(opts, text="Output folder:").grid(row=1, column=0, sticky="w", pady=6)
-        self.dest_var = tk.StringVar(value=str(DEFAULT_DEST_ROOT))
-        ttk.Entry(opts, textvariable=self.dest_var).grid(row=1, column=1, columnspan=2, sticky="ew")
-        ttk.Button(opts, text="Browse", command=self._choose_dest).grid(row=1, column=3, padx=8)
+            ttk.Label(opts, text="Workers:").grid(row=0, column=1, sticky="e")
+            self.workers_var = tk.StringVar(value=str(MAX_WORKERS))
+            ttk.Entry(opts, width=6, textvariable=self.workers_var).grid(
+                row=0, column=2, sticky="w", padx=6
+            )
 
-        opts.columnconfigure(1, weight=1)
+            ttk.Label(opts, text="Output folder:").grid(row=1, column=0, sticky="w", pady=6)
+            self.dest_var = tk.StringVar(value=str(DEFAULT_DEST_ROOT))
+            ttk.Entry(opts, textvariable=self.dest_var).grid(row=1, column=1, columnspan=2, sticky="ew")
+            ttk.Button(opts, text="Browse", command=self._choose_dest).grid(row=1, column=3, padx=8)
 
-        date_frame = ttk.LabelFrame(card, text="Modified-date filter", padding=10)
-        date_frame.pack(fill="x", pady=10)
+            opts.columnconfigure(1, weight=1)
 
-        self.date_mode_var = tk.StringVar(value="any")
-        ttk.Radiobutton(date_frame, text="All files", value="any", variable=self.date_mode_var).grid(
-            row=0, column=0, sticky="w", padx=(0, 18)
-        )
-        ttk.Radiobutton(
-            date_frame,
-            text="Only files modified on/before date",
-            value="before",
-            variable=self.date_mode_var,
-        ).grid(row=0, column=1, sticky="w", padx=(0, 18))
-        ttk.Radiobutton(
-            date_frame,
-            text="Only files modified on/after date",
-            value="after",
-            variable=self.date_mode_var,
-        ).grid(row=0, column=2, sticky="w")
+            date_frame = ttk.LabelFrame(card, text="Modified-date filter", padding=10)
+            date_frame.pack(fill="x", pady=10)
 
-        ttk.Label(date_frame, text="Cutoff date/time:").grid(row=1, column=0, sticky="w", pady=(8, 0))
-        self.date_var = tk.StringVar()
-        ttk.Entry(date_frame, width=28, textvariable=self.date_var).grid(
-            row=1, column=1, sticky="w", pady=(8, 0)
-        )
-        ttk.Label(
-            date_frame,
-            text="Formats: YYYY-MM-DD or YYYY-MM-DD HH:MM[:SS]",
-            style="Sub.TLabel",
-        ).grid(row=1, column=2, sticky="w", pady=(8, 0))
+            self.date_mode_var = tk.StringVar(value="any")
+            ttk.Radiobutton(date_frame, text="All files", value="any", variable=self.date_mode_var).grid(
+                row=0, column=0, sticky="w", padx=(0, 18)
+            )
+            ttk.Radiobutton(
+                date_frame,
+                text="Only files modified on/before date",
+                value="before",
+                variable=self.date_mode_var,
+            ).grid(row=0, column=1, sticky="w", padx=(0, 18))
+            ttk.Radiobutton(
+                date_frame,
+                text="Only files modified on/after date",
+                value="after",
+                variable=self.date_mode_var,
+            ).grid(row=0, column=2, sticky="w")
 
-        ctl = ttk.Frame(card, style="Card.TFrame")
-        ctl.pack(fill="x", pady=(8, 4))
+            ttk.Label(date_frame, text="Cutoff date/time:").grid(row=1, column=0, sticky="w", pady=(8, 0))
+            self.date_var = tk.StringVar()
+            ttk.Entry(date_frame, width=28, textvariable=self.date_var).grid(
+                row=1, column=1, sticky="w", pady=(8, 0)
+            )
+            ttk.Label(
+                date_frame,
+                text="Formats: YYYY-MM-DD or YYYY-MM-DD HH:MM[:SS]",
+                style="Sub.TLabel",
+            ).grid(row=1, column=2, sticky="w", pady=(8, 0))
 
-        self.start_btn = ttk.Button(ctl, text="Start Processing", style="Accent.TButton", command=self._start)
-        self.start_btn.pack(side="left")
+            ctl = ttk.Frame(card, style="Card.TFrame")
+            ctl.pack(fill="x", pady=(8, 4))
 
-        self.progress_var = tk.StringVar(value="Idle")
-        ttk.Label(ctl, textvariable=self.progress_var).pack(side="left", padx=14)
+            self.start_btn = ttk.Button(ctl, text="Start Processing", style="Accent.TButton", command=self._start)
+            self.start_btn.pack(side="left")
 
-        self.progress = ttk.Progressbar(card, orient="horizontal", mode="determinate")
-        self.progress.pack(fill="x", pady=(2, 8))
+            self.progress_var = tk.StringVar(value="Idle")
+            ttk.Label(ctl, textvariable=self.progress_var).pack(side="left", padx=14)
 
-        self.log_box = tk.Text(
-            card,
-            wrap="word",
-            height=18,
-            bg="#0B1220",
-            fg="#E5E7EB",
-            insertbackground="#E5E7EB",
-            relief="flat",
-            highlightthickness=0,
-        )
-        self.log_box.pack(fill="both", expand=True)
+            self.progress = ttk.Progressbar(card, orient="horizontal", mode="determinate")
+            self.progress.pack(fill="x", pady=(2, 8))
 
-    def _add_source(self):
-        selected = filedialog.askdirectory(title="Choose source folder")
-        if not selected:
-            return
-        p = Path(selected)
-        if p not in self.sources:
-            self.sources.append(p)
-            self.src_list.insert("end", str(p))
+            self.log_box = tk.Text(
+                card,
+                wrap="word",
+                height=18,
+                bg="#0B1220",
+                fg="#E5E7EB",
+                insertbackground="#E5E7EB",
+                relief="flat",
+                highlightthickness=0,
+            )
+            self.log_box.pack(fill="both", expand=True)
 
-    def _remove_source(self):
-        idxs = list(self.src_list.curselection())
-        if not idxs:
-            return
-        for idx in reversed(idxs):
-            del self.sources[idx]
-            self.src_list.delete(idx)
+        def _add_source(self):
+            selected = filedialog.askdirectory(title="Choose source folder")
+            if not selected:
+                return
+            p = Path(selected)
+            if p not in self.sources:
+                self.sources.append(p)
+                self.src_list.insert("end", str(p))
 
-    def _clear_sources(self):
-        self.sources.clear()
-        self.src_list.delete(0, "end")
+        def _remove_source(self):
+            idxs = list(self.src_list.curselection())
+            if not idxs:
+                return
+            for idx in reversed(idxs):
+                del self.sources[idx]
+                self.src_list.delete(idx)
 
-    def _choose_dest(self):
-        selected = filedialog.askdirectory(title="Choose output folder")
-        if selected:
-            self.dest_var.set(selected)
+        def _clear_sources(self):
+            self.sources.clear()
+            self.src_list.delete(0, "end")
 
-    def _log(self, message: str):
-        self.log_box.insert("end", message + "\n")
-        self.log_box.see("end")
+        def _choose_dest(self):
+            selected = filedialog.askdirectory(title="Choose output folder")
+            if selected:
+                self.dest_var.set(selected)
 
-    def _validate_options(self) -> RunOptions | None:
-        if not self.sources:
-            messagebox.showerror("Missing source", "Add at least one source folder.")
-            return None
+        def _log(self, message: str):
+            self.log_box.insert("end", message + "\n")
+            self.log_box.see("end")
 
-        try:
-            workers = max(1, int(self.workers_var.get().strip()))
-        except ValueError:
-            messagebox.showerror("Invalid workers", "Workers must be a positive integer.")
-            return None
-
-        mode = self.date_mode_var.get()
-        cutoff = None
-        if mode in {"before", "after"}:
-            raw = self.date_var.get().strip()
-            if not raw:
-                messagebox.showerror("Missing date", "Provide a cutoff date for the selected filter.")
-                return None
-            try:
-                cutoff = parse_date_input(raw)
-            except ValueError as e:
-                messagebox.showerror("Invalid date", str(e))
+        def _validate_options(self) -> RunOptions | None:
+            if not self.sources:
+                messagebox.showerror("Missing source", "Add at least one source folder.")
                 return None
 
-        options = RunOptions(
-            roots=[Path(p).expanduser() for p in self.sources],
-            recursive=not self.shallow_var.get(),
-            dest_root=Path(self.dest_var.get().strip() or str(DEFAULT_DEST_ROOT)).expanduser(),
-            date_mode=mode,
-            cutoff=cutoff,
-            workers=workers,
-        )
-        return options
-
-    def _set_running(self, running: bool):
-        state = "disabled" if running else "normal"
-        self.start_btn.configure(state=state)
-
-    def _start(self):
-        options = self._validate_options()
-        if not options:
-            return
-        self._set_running(True)
-        self.progress.configure(value=0, maximum=100)
-        self.progress_var.set("Running...")
-        self._log("=" * 72)
-        self._log(f"{ts()} Starting run")
-
-        def worker():
             try:
-                run_jobs(
-                    options,
-                    log=lambda m: self.task_queue.put(("log", m)),
-                    progress=lambda d, t, s, p, e: self.task_queue.put(
-                        ("progress", (d, t, s, p, e))
-                    ),
-                )
-                self.task_queue.put(("done", None))
-            except Exception as e:
-                self.task_queue.put(("error", str(e)))
+                workers = max(1, int(self.workers_var.get().strip()))
+            except ValueError:
+                messagebox.showerror("Invalid workers", "Workers must be a positive integer.")
+                return None
 
-        self.worker_thread = threading.Thread(target=worker, daemon=True)
-        self.worker_thread.start()
+            mode = self.date_mode_var.get()
+            cutoff = None
+            if mode in {"before", "after"}:
+                raw = self.date_var.get().strip()
+                if not raw:
+                    messagebox.showerror("Missing date", "Provide a cutoff date for the selected filter.")
+                    return None
+                try:
+                    cutoff = parse_date_input(raw)
+                except ValueError as e:
+                    messagebox.showerror("Invalid date", str(e))
+                    return None
 
-    def _poll_queue(self):
-        try:
-            while True:
-                kind, payload = self.task_queue.get_nowait()
-                if kind == "log":
-                    self._log(payload)
-                elif kind == "progress":
-                    done, total, skipped, pct, eta = payload
-                    self.progress.configure(value=pct)
-                    eta_hms = time.strftime("%H:%M:%S", time.gmtime(eta))
-                    self.progress_var.set(
-                        f"{done}/{total} ({pct:.1f}%) • skipped {skipped} • ETA {eta_hms}"
+            options = RunOptions(
+                roots=[Path(p).expanduser() for p in self.sources],
+                recursive=not self.shallow_var.get(),
+                dest_root=Path(self.dest_var.get().strip() or str(DEFAULT_DEST_ROOT)).expanduser(),
+                date_mode=mode,
+                cutoff=cutoff,
+                workers=workers,
+            )
+            return options
+
+        def _set_running(self, running: bool):
+            state = "disabled" if running else "normal"
+            self.start_btn.configure(state=state)
+
+        def _start(self):
+            options = self._validate_options()
+            if not options:
+                return
+            self._set_running(True)
+            self.progress.configure(value=0, maximum=100)
+            self.progress_var.set("Running...")
+            self._log("=" * 72)
+            self._log(f"{ts()} Starting run")
+
+            def worker():
+                try:
+                    run_jobs(
+                        options,
+                        log=lambda m: self.task_queue.put(("log", m)),
+                        progress=lambda d, t, s, p, e: self.task_queue.put(
+                            ("progress", (d, t, s, p, e))
+                        ),
                     )
-                elif kind == "done":
-                    self.progress_var.set("Completed")
-                    self._set_running(False)
-                elif kind == "error":
-                    self._log(f"{ts()} ERROR: {payload}")
-                    self.progress_var.set("Failed")
-                    self._set_running(False)
-                    messagebox.showerror("Processing error", payload)
-        except queue.Empty:
-            pass
-        self.after(120, self._poll_queue)
+                    self.task_queue.put(("done", None))
+                except Exception as e:
+                    self.task_queue.put(("error", str(e)))
 
+            self.worker_thread = threading.Thread(target=worker, daemon=True)
+            self.worker_thread.start()
+
+        def _poll_queue(self):
+            try:
+                while True:
+                    kind, payload = self.task_queue.get_nowait()
+                    if kind == "log":
+                        self._log(payload)
+                    elif kind == "progress":
+                        done, total, skipped, pct, eta = payload
+                        self.progress.configure(value=pct)
+                        eta_hms = time.strftime("%H:%M:%S", time.gmtime(eta))
+                        self.progress_var.set(
+                            f"{done}/{total} ({pct:.1f}%) • skipped {skipped} • ETA {eta_hms}"
+                        )
+                    elif kind == "done":
+                        self.progress_var.set("Completed")
+                        self._set_running(False)
+                    elif kind == "error":
+                        self._log(f"{ts()} ERROR: {payload}")
+                        self.progress_var.set("Failed")
+                        self._set_running(False)
+                        messagebox.showerror("Processing error", payload)
+            except queue.Empty:
+                pass
+            self.after(120, self._poll_queue)
+
+
+    app = ContactSheetsApp()
+    app.mainloop()
 
 def build_parser():
     ap = argparse.ArgumentParser()
@@ -669,11 +673,17 @@ def main():
     if args.cli or args.src:
         if not args.src:
             parser.error("CLI mode requires at least one src path")
+        if args.date_mode in {"before", "after"} and not args.date:
+            parser.error("--date is required when --date-mode is before or after")
+        if args.date:
+            try:
+                parse_date_input(args.date)
+            except ValueError as exc:
+                parser.error(str(exc))
         run_cli(args)
         return
 
-    app = ContactSheetsApp()
-    app.mainloop()
+    launch_gui()
 
 
 if __name__ == "__main__":
