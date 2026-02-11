@@ -22,7 +22,7 @@ import unicodedata
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from PIL import Image, ImageFile
@@ -132,11 +132,14 @@ def should_skip_folder(path: Path) -> bool:
     return False
 
 
-def parse_date_input(raw: str) -> datetime:
+def parse_date_input(raw: str, mode: str = "any") -> datetime:
     text = raw.strip()
     for fmt in DATE_FORMATS:
         try:
-            return datetime.strptime(text, fmt)
+            parsed = datetime.strptime(text, fmt)
+            if mode == "before" and fmt in {"%Y-%m-%d", "%Y/%m/%d"}:
+                return parsed + timedelta(days=1) - timedelta(microseconds=1)
+            return parsed
         except ValueError:
             continue
     raise ValueError(
@@ -242,7 +245,14 @@ def process_video(clip: Path, root: Path, dest_root: Path):
         return folder, False, f"⚠ {clip} — {e}"
 
 
-def process_photo_folder(folder: Path, imgs, root: Path, dest_root: Path):
+def photo_sheet_prefix(mode: str, cutoff: datetime | None) -> str:
+    if mode == "any" or cutoff is None:
+        return "photos_contact"
+    cutoff_tag = cutoff.strftime("%Y%m%d_%H%M%S")
+    return f"photos_contact_{mode}_{cutoff_tag}"
+
+
+def process_photo_folder(folder: Path, imgs, root: Path, dest_root: Path, prefix: str):
     dest_dir = dest_root / mirror_path(root, folder)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
@@ -251,7 +261,7 @@ def process_photo_folder(folder: Path, imgs, root: Path, dest_root: Path):
 
     msgs, any_ok = [], False
     for idx, batch in enumerate(batches, 1):
-        out_file = dest_dir / f"photos_contact_{idx:02d}.jpg"
+        out_file = dest_dir / f"{prefix}_{idx:02d}.jpg"
         if out_file.exists():
             continue
         thumbs = []
@@ -321,9 +331,11 @@ def run_jobs(options: RunOptions, log, progress):
     skipped = done = 0
     start = time.time()
 
+    photo_prefix = photo_sheet_prefix(options.date_mode, options.cutoff)
+
     with ProcessPoolExecutor(options.workers) as pool:
         futs = [pool.submit(process_video, v, r, options.dest_root) for v, r in all_vids] + [
-            pool.submit(process_photo_folder, f, imgs, r, options.dest_root)
+            pool.submit(process_photo_folder, f, imgs, r, options.dest_root, photo_prefix)
             for (f, r), imgs in all_pics.items()
         ]
 
@@ -361,7 +373,7 @@ def run_cli(args):
         recursive=not args.shallow,
         dest_root=Path(args.dest).expanduser(),
         date_mode=args.date_mode,
-        cutoff=parse_date_input(args.date) if args.date else None,
+        cutoff=parse_date_input(args.date, args.date_mode) if args.date else None,
         workers=max(1, args.workers),
     )
 
@@ -564,7 +576,7 @@ def launch_gui():
                     messagebox.showerror("Missing date", "Provide a cutoff date for the selected filter.")
                     return None
                 try:
-                    cutoff = parse_date_input(raw)
+                    cutoff = parse_date_input(raw, mode)
                 except ValueError as e:
                     messagebox.showerror("Invalid date", str(e))
                     return None
@@ -677,7 +689,7 @@ def main():
             parser.error("--date is required when --date-mode is before or after")
         if args.date:
             try:
-                parse_date_input(args.date)
+                parse_date_input(args.date, args.date_mode)
             except ValueError as exc:
                 parser.error(str(exc))
         run_cli(args)
